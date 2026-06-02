@@ -26,7 +26,11 @@ MAX_RESULTS_API = 10000  # plafond imposé par l'API (page * per_page <= 10000)
 
 
 def _fetch_page(query, page):
-    """Récupère une page de résultats de l'API."""
+    """Récupère une page de résultats de l'API.
+
+    Reprend sur les erreurs réseau et sur les 429/503 (l'API limite le débit
+    et renvoie un 503 quand on l'interroge trop vite), avec backoff progressif.
+    """
     params = urllib.parse.urlencode(
         {"q": query, "page": page, "per_page": PER_PAGE}
     )
@@ -34,21 +38,28 @@ def _fetch_page(query, page):
     req = urllib.request.Request(url, headers={"User-Agent": "recherche-entreprises-cli"})
 
     last_err = None
-    for attempt in range(4):  # quelques tentatives en cas d'aléa réseau
+    for attempt in range(6):
         try:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as err:
+            last_err = err
+            if err.code in (429, 503):  # rate-limit / surcharge : on réessaie
+                time.sleep(min(2 ** attempt, 20))
+            else:
+                raise RuntimeError(f"Échec de la requête API : {err}")
         except (urllib.error.URLError, TimeoutError) as err:
             last_err = err
-            time.sleep(2 ** attempt)
+            time.sleep(min(2 ** attempt, 20))
     raise RuntimeError(f"Échec de la requête API : {last_err}")
 
 
-def search_companies(query, limit=None):
+def search_companies(query, limit=None, pause=0.6):
     """Renvoie la liste de toutes les entreprises correspondant à `query`.
 
     `limit` borne le nombre d'entreprises renvoyées (None = tout récupérer,
-    dans la limite du plafond de l'API).
+    dans la limite du plafond de l'API). `pause` espace les pages pour rester
+    sous la limite de débit de l'API.
     """
     first = _fetch_page(query, 1)
     total = first.get("total_results", 0)
@@ -59,6 +70,7 @@ def search_companies(query, limit=None):
     while page <= total_pages and page * PER_PAGE <= MAX_RESULTS_API + PER_PAGE:
         if limit is not None and len(results) >= limit:
             break
+        time.sleep(pause)  # throttling pour éviter les 503
         results.extend(_fetch_page(query, page).get("results", []))
         page += 1
 
