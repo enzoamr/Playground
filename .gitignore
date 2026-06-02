@@ -1,0 +1,4 @@
+# Données générées par recherche_entreprises.py (exports / cache)
+enzo_*.csv
+enzo_*_cache.json
+*.cache.json
