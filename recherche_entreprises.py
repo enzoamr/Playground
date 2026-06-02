@@ -91,13 +91,13 @@ def tva_intracommunautaire(siren):
     return f"FR{cle:02d}{siren}"
 
 
-def verifier_tva_vies(tva):
+def verifier_tva_vies(tva, essais=6):
     """Vérifie un numéro de TVA auprès du service officiel VIES de l'UE.
 
-    Renvoie un dict {'valide': bool, 'nom': str|None, 'adresse': str|None}
-    ou {'valide': None, ...} si le service est injoignable (réseau bloqué,
-    indisponibilité, etc.). Confirme qu'un numéro est réellement *actif*,
-    et pas seulement de format correct.
+    Renvoie un dict {'valide': bool, 'nom': str|None, 'adresse': str|None}.
+    'valide' vaut None si le service reste injoignable ou continue de limiter
+    le débit (erreurs MS_MAX_CONCURRENT_REQ, etc.) après plusieurs tentatives.
+    Confirme qu'un numéro est réellement *actif*, pas seulement de bon format.
     """
     inconnu = {"valide": None, "nom": None, "adresse": None}
     if not tva or len(tva) < 3:
@@ -105,16 +105,26 @@ def verifier_tva_vies(tva):
     pays, numero = tva[:2], tva[2:]
     url = f"{VIES_URL}/{pays}/vat/{numero}"
     req = urllib.request.Request(url, headers={"User-Agent": "recherche-entreprises-cli"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+
+    for essai in range(essais):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, ValueError):
+            time.sleep(min(2 ** essai, 16))
+            continue
+        # VIES répond 200 même en cas de throttling : on ne fie isValid que si
+        # userError indique une réponse exploitable (VALID / INVALID / absent).
+        err = data.get("userError")
+        if err not in (None, "", "VALID", "INVALID"):
+            time.sleep(min(2 ** essai, 16))  # throttle côté État membre : on retente
+            continue
         return {
-            "valide": bool(data.get("valid")),
-            "nom": (data.get("name") or "").strip() or None,
-            "adresse": (data.get("address") or "").strip() or None,
+            "valide": bool(data.get("isValid")),
+            "nom": (data.get("name") or "").strip().strip("-") or None,
+            "adresse": (data.get("address") or "").strip().strip("-").strip() or None,
         }
-    except (urllib.error.URLError, TimeoutError, ValueError):
-        return inconnu
+    return inconnu
 
 
 def _simplify(company, verifier=False):
