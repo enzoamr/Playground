@@ -1,4 +1,10 @@
+# Cache Python
+__pycache__/
+*.pyc
+
 # Données générées par recherche_entreprises.py (exports / cache)
-enzo_*.csv
-enzo_*_cache.json
+*_tva.csv
+*_valides.csv
+*_entreprises.csv
+*_cache.json
 *.cache.json
