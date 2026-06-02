@@ -66,6 +66,18 @@ def search_companies(query, limit=None):
     return results, total
 
 
+def tva_intracommunautaire(siren):
+    """Calcule le numéro de TVA intracommunautaire français à partir du SIREN.
+
+    Format officiel : FR + clé (2 chiffres) + SIREN (9 chiffres),
+    avec clé = (12 + 3 * (SIREN mod 97)) mod 97.
+    """
+    if not siren or not str(siren).isdigit() or len(str(siren)) != 9:
+        return None
+    cle = (12 + 3 * (int(siren) % 97)) % 97
+    return f"FR{cle:02d}{siren}"
+
+
 def _simplify(company):
     """Extrait les données les plus utiles d'une entreprise."""
     siege = company.get("siege") or {}
@@ -76,6 +88,7 @@ def _simplify(company):
     ]
     return {
         "siren": company.get("siren"),
+        "tva_intracommunautaire": tva_intracommunautaire(company.get("siren")),
         "nom": company.get("nom_complet") or company.get("nom_raison_sociale"),
         "sigle": company.get("sigle"),
         "categorie": company.get("categorie_entreprise"),
@@ -96,6 +109,7 @@ def _print_table(companies):
     for i, raw in enumerate(companies, 1):
         c = _simplify(raw)
         print(f"\n{i}. {c['nom']}  (SIREN {c['siren']}) — {c['etat']}")
+        print(f"   N° TVA          : {c['tva_intracommunautaire'] or '—'}")
         if c["sigle"]:
             print(f"   Sigle           : {c['sigle']}")
         print(f"   Catégorie       : {c['categorie'] or '—'}")
