@@ -99,13 +99,22 @@
   // invisible auto-sweep: simulates a cursor whooshing across the text on its own
   function scheduleSweep(){ setTimeout(startSweep, 2200 + Math.random()*2600); }
   function startSweep(){
-    const yA = H*0.30, yB = H*0.72;
-    const fromLeft = Math.random() < 0.5;
-    auto.sx = fromLeft ? -60 : W + 60;
-    auto.ex = fromLeft ? W + 60 : -60;
-    auto.sy = yA + Math.random()*(yB - yA);
-    auto.ey = yA + Math.random()*(yB - yA);
-    auto.wob = (Math.random()*2 - 1) * H * 0.06;
+    const xA = W*0.12, xB = W*0.88, yA = H*0.28, yB = H*0.72;
+    const mode = Math.floor(Math.random() * 3); // 0 horizontal, 1 vertical, 2 diagonal
+    if (mode === 0) {                            // left <-> right
+      const fromLeft = Math.random() < 0.5;
+      auto.sx = fromLeft ? -60 : W + 60; auto.ex = fromLeft ? W + 60 : -60;
+      auto.sy = yA + Math.random()*(yB - yA); auto.ey = yA + Math.random()*(yB - yA);
+    } else if (mode === 1) {                      // top <-> bottom
+      const fromTop = Math.random() < 0.5;
+      auto.sy = fromTop ? -60 : H + 60; auto.ey = fromTop ? H + 60 : -60;
+      auto.sx = xA + Math.random()*(xB - xA); auto.ex = xA + Math.random()*(xB - xA);
+    } else {                                      // diagonal corner-to-corner
+      const lr = Math.random() < 0.5, tb = Math.random() < 0.5;
+      auto.sx = lr ? -60 : W + 60; auto.ex = lr ? W + 60 : -60;
+      auto.sy = tb ? -60 : H + 60; auto.ey = tb ? H + 60 : -60;
+    }
+    auto.wob = (Math.random()*2 - 1) * Math.min(W, H) * 0.05;
     auto.dur = 650 + Math.random()*450;   // fast whoosh
     auto.t0 = performance.now();
     auto.active = true;
@@ -201,8 +210,11 @@
       if (tt >= 1) { auto.active = false; scheduleSweep(); }
       else {
         const e = tt < 0.5 ? 2*tt*tt : 1 - Math.pow(-2*tt + 2, 2) / 2; // easeInOut
-        auto.x = auto.sx + (auto.ex - auto.sx) * e;
-        auto.y = auto.sy + (auto.ey - auto.sy) * e + Math.sin(tt*Math.PI) * auto.wob;
+        const dxv = auto.ex - auto.sx, dyv = auto.ey - auto.sy;
+        const len = Math.hypot(dxv, dyv) || 1;
+        const w = Math.sin(tt * Math.PI) * auto.wob; // wobble perpendicular to travel
+        auto.x = auto.sx + dxv * e + (-dyv / len) * w;
+        auto.y = auto.sy + dyv * e + ( dxv / len) * w;
       }
     }
 
