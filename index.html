@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VANGUARD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#050505;
+    --fg:#f4f4f0;
+    --cyan:#00f0ff;
+    --magenta:#ff003c;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);overflow:hidden}
+  body{
+    font-family:"Space Mono",monospace;
+    color:var(--fg);
+    display:grid;
+    place-items:center;
+    cursor:crosshair;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---- ambient: drifting radial glow ---- */
+  .aura{
+    position:fixed;inset:-30%;
+    background:
+      radial-gradient(40% 50% at 30% 35%, rgba(0,240,255,.10), transparent 60%),
+      radial-gradient(45% 55% at 72% 68%, rgba(255,0,60,.10), transparent 60%);
+    filter:blur(20px);
+    animation:drift 22s ease-in-out infinite alternate;
+    z-index:0;
+  }
+  @keyframes drift{
+    0%{transform:translate(0,0) scale(1)}
+    50%{transform:translate(3%,-2%) scale(1.08)}
+    100%{transform:translate(-3%,2%) scale(1)}
+  }
+
+  /* ---- stage ---- */
+  .stage{
+    position:relative;
+    z-index:2;
+    text-align:center;
+    mix-blend-mode:screen;
+  }
+
+  .kicker{
+    font-size:clamp(.55rem,1.4vw,.8rem);
+    letter-spacing:.7em;
+    text-indent:.7em;
+    color:#6b6b6b;
+    margin-bottom:clamp(1rem,3vw,2.2rem);
+    text-transform:uppercase;
+    animation:flick 6s steps(1) infinite;
+  }
+  @keyframes flick{
+    0%,97%,100%{opacity:.85}
+    97.5%{opacity:.15}
+    98.5%{opacity:.9}
+  }
+
+  .glitch{
+    position:relative;
+    font-family:"Anton",sans-serif;
+    font-weight:400;
+    font-size:clamp(3.4rem,18vw,15rem);
+    line-height:.82;
+    letter-spacing:-.02em;
+    text-transform:uppercase;
+    color:var(--fg);
+    user-select:none;
+  }
+  .glitch::before,
+  .glitch::after{
+    content:attr(data-text);
+    position:absolute;
+    inset:0;
+    background:var(--bg);
+    overflow:hidden;
+  }
+  .glitch::before{
+    color:var(--cyan);
+    left:2px;
+    text-shadow:-2px 0 var(--cyan);
+    animation:noise-1 2.6s infinite linear alternate-reverse;
+  }
+  .glitch::after{
+    color:var(--magenta);
+    left:-2px;
+    text-shadow:2px 0 var(--magenta);
+    animation:noise-2 3.4s infinite linear alternate-reverse;
+  }
+  @keyframes noise-1{
+    0%{clip-path:inset(20% 0 60% 0)}
+    10%{clip-path:inset(85% 0 5% 0)}
+    20%{clip-path:inset(40% 0 43% 0)}
+    30%{clip-path:inset(8% 0 88% 0)}
+    40%{clip-path:inset(62% 0 9% 0)}
+    50%{clip-path:inset(30% 0 55% 0)}
+    60%{clip-path:inset(95% 0 1% 0)}
+    70%{clip-path:inset(15% 0 70% 0)}
+    80%{clip-path:inset(50% 0 30% 0)}
+    90%{clip-path:inset(2% 0 92% 0)}
+    100%{clip-path:inset(70% 0 12% 0)}
+  }
+  @keyframes noise-2{
+    0%{clip-path:inset(75% 0 8% 0)}
+    10%{clip-path:inset(12% 0 78% 0)}
+    20%{clip-path:inset(55% 0 28% 0)}
+    30%{clip-path:inset(90% 0 3% 0)}
+    40%{clip-path:inset(25% 0 60% 0)}
+    50%{clip-path:inset(5% 0 85% 0)}
+    60%{clip-path:inset(48% 0 35% 0)}
+    70%{clip-path:inset(80% 0 7% 0)}
+    80%{clip-path:inset(33% 0 50% 0)}
+    90%{clip-path:inset(68% 0 18% 0)}
+    100%{clip-path:inset(18% 0 66% 0)}
+  }
+
+  /* periodic violent shake + slice */
+  .glitch.burst{animation:shake .32s steps(2) 1}
+  @keyframes shake{
+    0%{transform:translate(0,0) skewX(0)}
+    20%{transform:translate(-4px,2px) skewX(8deg)}
+    40%{transform:translate(5px,-2px) skewX(-6deg)}
+    60%{transform:translate(-3px,1px) skewX(4deg)}
+    80%{transform:translate(2px,-1px) skewX(-3deg)}
+    100%{transform:translate(0,0) skewX(0)}
+  }
+
+  .baseline{
+    margin-top:clamp(1.1rem,3vw,2.4rem);
+    display:flex;
+    gap:clamp(1rem,4vw,3rem);
+    justify-content:center;
+    align-items:center;
+    font-size:clamp(.55rem,1.3vw,.78rem);
+    letter-spacing:.42em;
+    text-indent:.42em;
+    color:#8a8a8a;
+    text-transform:uppercase;
+  }
+  .baseline span{position:relative}
+  .baseline .dot{
+    width:5px;height:5px;border-radius:50%;
+    background:var(--magenta);
+    box-shadow:0 0 12px var(--magenta);
+    animation:pulse 1.8s ease-in-out infinite;
+    text-indent:0;
+  }
+  @keyframes pulse{50%{opacity:.25;transform:scale(.6)}}
+
+  /* ---- overlays: scanlines + grain + vignette ---- */
+  .scan{
+    position:fixed;inset:0;z-index:5;pointer-events:none;
+    background:repeating-linear-gradient(
+      0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.35) 3px, rgba(0,0,0,.35) 3px);
+    mix-blend-mode:multiply;
+    opacity:.55;
+    animation:roll 8s linear infinite;
+  }
+  @keyframes roll{from{background-position:0 0}to{background-position:0 100px}}
+
+  .grain{
+    position:fixed;inset:-150%;z-index:6;pointer-events:none;
+    opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation:grainmove .4s steps(4) infinite;
+  }
+  @keyframes grainmove{
+    0%{transform:translate(0,0)}25%{transform:translate(-5%,3%)}
+    50%{transform:translate(4%,-4%)}75%{transform:translate(-3%,-2%)}
+    100%{transform:translate(3%,4%)}
+  }
+
+  .vignette{
+    position:fixed;inset:0;z-index:4;pointer-events:none;
+    background:radial-gradient(120% 120% at 50% 50%, transparent 55%, rgba(0,0,0,.85) 100%);
+  }
+
+  /* corner marks */
+  .mark{
+    position:fixed;z-index:7;
+    font-size:.6rem;letter-spacing:.3em;color:#5a5a5a;
+    text-transform:uppercase;pointer-events:none;
+  }
+  .mark.tl{top:1.4rem;left:1.6rem}
+  .mark.br{bottom:1.4rem;right:1.6rem}
+
+  @media (max-width:520px){
+    .baseline{gap:1.2rem}
+    .mark{font-size:.5rem}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important}
+  }
+</style>
+</head>
+<body>
+  <div class="aura"></div>
+
+  <main class="stage">
+    <p class="kicker">EST. MALTA</p>
+    <h1 class="glitch" data-text="VANGUARD">VANGUARD</h1>
+    <div class="baseline">
+      <span>LIMITED</span>
+      <span class="dot"></span>
+      <span>VANGUARD.MT</span>
+    </div>
+  </main>
+
+  <div class="scan"></div>
+  <div class="grain"></div>
+  <div class="vignette"></div>
+  <div class="mark tl">// 35.9°N 14.5°E</div>
+  <div class="mark br">SYS — ONLINE</div>
+
+<script>
+  // random violent glitch bursts
+  const el = document.querySelector('.glitch');
+  function burst(){
+    el.classList.add('burst');
+    setTimeout(()=>el.classList.remove('burst'), 340);
+    const next = 1600 + Math.random()*3400;
+    setTimeout(burst, next);
+  }
+  setTimeout(burst, 1200);
+</script>
+</body>
+</html>
