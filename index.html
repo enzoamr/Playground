@@ -115,7 +115,7 @@
       auto.sy = tb ? -60 : H + 60; auto.ey = tb ? H + 60 : -60;
     }
     auto.wob = (Math.random()*2 - 1) * Math.min(W, H) * 0.05;
-    auto.dur = 650 + Math.random()*450;   // fast whoosh
+    auto.dur = 1500 + Math.random()*900;   // slower, gliding sweep
     auto.t0 = performance.now();
     auto.active = true;
   }
