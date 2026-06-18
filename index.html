@@ -79,7 +79,7 @@
   <canvas id="c"></canvas>
   <div class="vig"></div>
   <div class="ui">
-    <div class="sub"><span>Limited</span><span class="d"></span><span>Malta</span><span class="d"></span><span>vanguard.mt</span></div>
+    <div class="sub"><span>Malta</span><span class="d"></span><span>vanguard.mt</span></div>
   </div>
   <div class="mark tl">// 35.9°N 14.5°E</div>
   <div class="mark tr">EST · MMXXVI</div>
@@ -112,18 +112,23 @@
     const octx = off.getContext('2d');
     off.width = W; off.height = H;
 
-    // fit font to width
-    let fs = Math.min(H * 0.34, W * 0.92 / (WORD.length * 0.62));
+    // fit main word to width
     octx.fillStyle = '#fff';
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
+
+    const fs = Math.min(H * 0.30, W * 0.90 / (WORD.length * 0.62));
+    const cyMain = H/2 - fs * 0.22;
     octx.font = `${fs}px Anton, sans-serif`;
-    // squeeze letter spacing a touch via manual draw
-    octx.save();
-    octx.translate(W/2, H/2);
-    octx.scale(1.0, 1.0);
-    octx.fillText(WORD, 0, 0);
-    octx.restore();
+    octx.fillText(WORD, W/2, cyMain);
+
+    // subtitle word — same style, smaller, sitting just below
+    const SUBW = "LIMITED";
+    const fs2 = fs * 0.30;
+    octx.font = `${fs2}px Anton, sans-serif`;
+    try { octx.letterSpacing = `${fs2 * 0.22}px`; } catch (e) {}
+    octx.fillText(SUBW, W/2, H/2 + fs * 0.46);
+    try { octx.letterSpacing = '0px'; } catch (e) {}
 
     const img = octx.getImageData(0, 0, W, H).data;
 
