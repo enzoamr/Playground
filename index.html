@@ -93,7 +93,23 @@
   const ctx = canvas.getContext('2d', { alpha: true });
   let W, H, DPR;
   const pointer = { x: -9999, y: -9999, active: false };
+  const auto = { active:false, x:0, y:0, sx:0, sy:0, ex:0, ey:0, t0:0, dur:900, wob:0 };
   let particles = [];
+
+  // invisible auto-sweep: simulates a cursor whooshing across the text on its own
+  function scheduleSweep(){ setTimeout(startSweep, 2200 + Math.random()*2600); }
+  function startSweep(){
+    const yA = H*0.30, yB = H*0.72;
+    const fromLeft = Math.random() < 0.5;
+    auto.sx = fromLeft ? -60 : W + 60;
+    auto.ex = fromLeft ? W + 60 : -60;
+    auto.sy = yA + Math.random()*(yB - yA);
+    auto.ey = yA + Math.random()*(yB - yA);
+    auto.wob = (Math.random()*2 - 1) * H * 0.06;
+    auto.dur = 650 + Math.random()*450;   // fast whoosh
+    auto.t0 = performance.now();
+    auto.active = true;
+  }
 
   const WORD = "VANGUARD";
 
@@ -177,6 +193,18 @@
     ctx.globalCompositeOperation = 'lighter';
 
     const pr = 110, pr2 = pr * pr;
+    const pra = 130, pra2 = pra * pra;
+
+    // advance the invisible auto-sweep
+    if (auto.active) {
+      const tt = (performance.now() - auto.t0) / auto.dur;
+      if (tt >= 1) { auto.active = false; scheduleSweep(); }
+      else {
+        const e = tt < 0.5 ? 2*tt*tt : 1 - Math.pow(-2*tt + 2, 2) / 2; // easeInOut
+        auto.x = auto.sx + (auto.ex - auto.sx) * e;
+        auto.y = auto.sy + (auto.ey - auto.sy) * e + Math.sin(tt*Math.PI) * auto.wob;
+      }
+    }
 
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
@@ -198,6 +226,18 @@
           const f = 1 - d / pr;
           ax += (dx / d) * f * f * 7.0;
           ay += (dy / d) * f * f * 7.0;
+        }
+      }
+
+      // same disturbance from the invisible auto-sweep
+      if (auto.active) {
+        const dx = p.x - auto.x, dy = p.y - auto.y;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < pra2 && d2 > 0.01) {
+          const d = Math.sqrt(d2);
+          const f = 1 - d / pra;
+          ax += (dx / d) * f * f * 7.5;
+          ay += (dy / d) * f * f * 7.5;
         }
       }
 
@@ -226,7 +266,8 @@
   window.addEventListener('touchend', () => pointer.active = false);
 
   // wait for the display font, then build for correct glyph shapes
-  function start(){ size(); requestAnimationFrame(frame); }
+  let started = false;
+  function start(){ if (started) return; started = true; size(); scheduleSweep(); requestAnimationFrame(frame); }
   if (document.fonts && document.fonts.ready) {
     document.fonts.load('700 100px Anton').then(()=>document.fonts.ready).then(start).catch(start);
     setTimeout(start, 1500); // fallback if fonts hang
