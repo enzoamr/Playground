@@ -117,25 +117,23 @@
     octx.textAlign = 'center';
     octx.textBaseline = 'middle';
 
-    const fs = Math.min(H * 0.30, W * 0.90 / (WORD.length * 0.62));
-    const cyMain = H/2 - fs * 0.22;
+    const fs = Math.min(H * 0.27, W * 0.90 / (WORD.length * 0.62));
     octx.font = `${fs}px Anton, sans-serif`;
-    octx.fillText(WORD, W/2, cyMain);
+    octx.fillText(WORD, W/2, H/2 - fs * 0.28);
 
-    // subtitle word — same style, smaller, sitting just below
+    // subtitle word — same style, bigger now so it stays legible, sitting just below
     const SUBW = "LIMITED";
-    const fs2 = fs * 0.30;
+    const fs2 = fs * 0.40;
     octx.font = `${fs2}px Anton, sans-serif`;
-    try { octx.letterSpacing = `${fs2 * 0.22}px`; } catch (e) {}
-    octx.fillText(SUBW, W/2, H/2 + fs * 0.46);
+    try { octx.letterSpacing = `${fs2 * 0.18}px`; } catch (e) {}
+    octx.fillText(SUBW, W/2, H/2 + fs * 0.52);
     try { octx.letterSpacing = '0px'; } catch (e) {}
 
     const img = octx.getImageData(0, 0, W, H).data;
 
     // density adapts to screen so mobile stays smooth
     const area = W * H;
-    let step = area > 900000 ? 4 : 3;
-    if (W < 480) step = 4;
+    let step = area > 1600000 ? 4 : 3; // finer sampling -> denser, more legible
 
     const targets = [];
     for (let y = 0; y < H; y += step) {
