@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#000000" />
+<title>VANGUARD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@300;500&display=swap" rel="stylesheet" />
+<style>
+  :root{ --bg:#020204; --fg:#f5f6fa; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);}
+  body{
+    font-family:"Space Grotesk",sans-serif;
+    color:var(--fg);
+    position:fixed;inset:0;
+    touch-action:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  canvas{display:block;position:fixed;inset:0;width:100%;height:100%;}
+
+  /* ambient deep glow */
+  .glow{
+    position:fixed;inset:-20%;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(38% 46% at 32% 38%, rgba(56,128,255,.16), transparent 60%),
+      radial-gradient(42% 50% at 70% 66%, rgba(190,60,255,.14), transparent 62%);
+    filter:blur(30px);
+    animation:breathe 14s ease-in-out infinite alternate;
+  }
+  @keyframes breathe{0%{opacity:.7;transform:scale(1)}100%{opacity:1;transform:scale(1.08)}}
+
+  .ui{position:fixed;inset:0;z-index:3;pointer-events:none;}
+
+  .sub{
+    position:absolute;left:50%;bottom:13%;transform:translateX(-50%);
+    display:flex;gap:clamp(.9rem,4vw,2.4rem);align-items:center;
+    font-weight:300;text-transform:uppercase;
+    font-size:clamp(.58rem,1.5vw,.82rem);
+    letter-spacing:.5em;text-indent:.5em;color:#aeb4c4;
+    opacity:0;animation:rise 1.4s 1.5s cubic-bezier(.16,1,.3,1) forwards;
+    white-space:nowrap;
+  }
+  .sub .d{width:5px;height:5px;border-radius:50%;text-indent:0;
+    background:#7aa2ff;box-shadow:0 0 14px #7aa2ff;animation:tw 2.2s ease-in-out infinite;}
+  @keyframes tw{50%{opacity:.2;transform:scale(.5)}}
+  @keyframes rise{to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  .sub{transform:translateX(-50%) translateY(14px)}
+
+  .mark{position:fixed;z-index:3;pointer-events:none;
+    font-weight:300;font-size:.6rem;letter-spacing:.34em;color:#4b5163;text-transform:uppercase;
+    opacity:0;animation:fade 2s 2.2s forwards;}
+  @keyframes fade{to{opacity:1}}
+  .mark.tl{top:1.5rem;left:1.7rem}
+  .mark.tr{top:1.5rem;right:1.7rem}
+  .mark.bl{bottom:1.5rem;left:1.7rem}
+
+  .hint{
+    position:fixed;z-index:3;left:50%;bottom:6%;transform:translateX(-50%);
+    pointer-events:none;font-weight:300;font-size:.56rem;letter-spacing:.4em;
+    color:#3a4052;text-transform:uppercase;
+    opacity:0;animation:hintpulse 4s 3s ease-in-out infinite;
+  }
+  @keyframes hintpulse{0%,100%{opacity:0}50%{opacity:.85}}
+
+  .grain{position:fixed;inset:-150%;z-index:4;pointer-events:none;opacity:.04;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation:gm .5s steps(3) infinite;}
+  @keyframes gm{0%{transform:translate(0,0)}33%{transform:translate(-4%,2%)}66%{transform:translate(3%,-3%)}100%{transform:translate(2%,3%)}}
+
+  .vig{position:fixed;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(130% 130% at 50% 50%, transparent 50%, rgba(0,0,0,.9) 100%);}
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <canvas id="c"></canvas>
+  <div class="vig"></div>
+  <div class="ui">
+    <div class="sub"><span>Malta</span><span class="d"></span><span>vanguard.mt</span></div>
+  </div>
+  <div class="mark tl">// 35.9°N 14.5°E</div>
+  <div class="mark tr">EST · MMXXVI</div>
+  <div class="mark bl">SYSTEM ONLINE</div>
+  <div class="hint">touch · disturb</div>
+  <div class="grain"></div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', { alpha: true });
+  let W, H, DPR;
+  const pointer = { x: -9999, y: -9999, active: false };
+  const auto = { active:false, x:0, y:0, sx:0, sy:0, ex:0, ey:0, t0:0, dur:900, wob:0 };
+  let particles = [];
+
+  // invisible auto-sweep: simulates a cursor whooshing across the text on its own
+  function scheduleSweep(){ setTimeout(startSweep, 2200 + Math.random()*2600); }
+  function startSweep(){
+    const xA = W*0.12, xB = W*0.88, yA = H*0.28, yB = H*0.72;
+    const mode = Math.floor(Math.random() * 3); // 0 horizontal, 1 vertical, 2 diagonal
+    if (mode === 0) {                            // left <-> right
+      const fromLeft = Math.random() < 0.5;
+      auto.sx = fromLeft ? -60 : W + 60; auto.ex = fromLeft ? W + 60 : -60;
+      auto.sy = yA + Math.random()*(yB - yA); auto.ey = yA + Math.random()*(yB - yA);
+    } else if (mode === 1) {                      // top <-> bottom
+      const fromTop = Math.random() < 0.5;
+      auto.sy = fromTop ? -60 : H + 60; auto.ey = fromTop ? H + 60 : -60;
+      auto.sx = xA + Math.random()*(xB - xA); auto.ex = xA + Math.random()*(xB - xA);
+    } else {                                      // diagonal corner-to-corner
+      const lr = Math.random() < 0.5, tb = Math.random() < 0.5;
+      auto.sx = lr ? -60 : W + 60; auto.ex = lr ? W + 60 : -60;
+      auto.sy = tb ? -60 : H + 60; auto.ey = tb ? H + 60 : -60;
+    }
+    auto.wob = (Math.random()*2 - 1) * Math.min(W, H) * 0.05;
+    auto.dur = 1500 + Math.random()*900;   // slower, gliding sweep
+    auto.t0 = performance.now();
+    auto.active = true;
+  }
+
+  const WORD = "VANGUARD";
+
+  function size() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    build();
+  }
+
+  // sample the word into target points
+  function build() {
+    const off = document.createElement('canvas');
+    const octx = off.getContext('2d');
+    off.width = W; off.height = H;
+
+    // fit main word to width
+    octx.fillStyle = '#fff';
+    octx.textAlign = 'center';
+    octx.textBaseline = 'middle';
+
+    const fs = Math.min(H * 0.27, W * 0.90 / (WORD.length * 0.62));
+    octx.font = `${fs}px Anton, sans-serif`;
+    octx.fillText(WORD, W/2, H/2 - fs * 0.28);
+
+    // subtitle word — same style, bigger now so it stays legible, sitting just below
+    const SUBW = "LIMITED";
+    const fs2 = fs * 0.40;
+    octx.font = `${fs2}px Anton, sans-serif`;
+    try { octx.letterSpacing = `${fs2 * 0.18}px`; } catch (e) {}
+    octx.fillText(SUBW, W/2, H/2 + fs * 0.52);
+    try { octx.letterSpacing = '0px'; } catch (e) {}
+
+    const img = octx.getImageData(0, 0, W, H).data;
+
+    // density adapts to screen so mobile stays smooth
+    const area = W * H;
+    let step = area > 1600000 ? 4 : 3; // finer sampling -> denser, more legible
+
+    const targets = [];
+    for (let y = 0; y < H; y += step) {
+      for (let x = 0; x < W; x += step) {
+        const a = img[(y * W + x) * 4 + 3];
+        if (a > 130) targets.push({ x, y });
+      }
+    }
+
+    // hue spans the word for an iridescent sweep
+    let minX = Infinity, maxX = -Infinity;
+    for (const t of targets){ if(t.x<minX)minX=t.x; if(t.x>maxX)maxX=t.x; }
+    const span = Math.max(1, maxX - minX);
+
+    const old = particles;
+    particles = new Array(targets.length);
+    for (let i = 0; i < targets.length; i++) {
+      const t = targets[i];
+      const src = old[i] || null;
+      const ang = Math.random() * Math.PI * 2;
+      const rad = Math.max(W, H) * (0.6 + Math.random() * 0.7);
+      particles[i] = {
+        x: src ? src.x : W/2 + Math.cos(ang) * rad,
+        y: src ? src.y : H/2 + Math.sin(ang) * rad,
+        vx: 0, vy: 0,
+        tx: t.x, ty: t.y,
+        hue: 205 + ((t.x - minX) / span) * 120, // cyan-blue -> violet/magenta
+        sz: Math.random() < 0.1 ? 1.8 : 1.25,
+        ph: Math.random() * Math.PI * 2
+      };
+    }
+  }
+
+  let time = 0;
+  const SPRING = 0.09, FRICTION = 0.80;
+  function frame() {
+    time += 0.016;
+    // short luminous trail — high alpha keeps the word crisp, no smear at rest
+    ctx.fillStyle = 'rgba(2,2,4,0.40)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+
+    const pr = 110, pr2 = pr * pr;
+    const pra = 130, pra2 = pra * pra;
+
+    // advance the invisible auto-sweep
+    if (auto.active) {
+      const tt = (performance.now() - auto.t0) / auto.dur;
+      if (tt >= 1) { auto.active = false; scheduleSweep(); }
+      else {
+        const e = tt < 0.5 ? 2*tt*tt : 1 - Math.pow(-2*tt + 2, 2) / 2; // easeInOut
+        const dxv = auto.ex - auto.sx, dyv = auto.ey - auto.sy;
+        const len = Math.hypot(dxv, dyv) || 1;
+        const w = Math.sin(tt * Math.PI) * auto.wob; // wobble perpendicular to travel
+        auto.x = auto.sx + dxv * e + (-dyv / len) * w;
+        auto.y = auto.sy + dyv * e + ( dxv / len) * w;
+      }
+    }
+
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+
+      // tiny bounded breathing AROUND the target (±0.8px) -> alive but readable
+      const ox = Math.sin(time * 1.3 + p.ph) * 0.8;
+      const oy = Math.cos(time * 1.1 + p.ph) * 0.8;
+
+      // strong spring locks every particle onto its glyph
+      let ax = ((p.tx + ox) - p.x) * SPRING;
+      let ay = ((p.ty + oy) - p.y) * SPRING;
+
+      // localized pointer repulsion (soft falloff -> only the touched zone scatters)
+      if (pointer.active) {
+        const dx = p.x - pointer.x, dy = p.y - pointer.y;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < pr2 && d2 > 0.01) {
+          const d = Math.sqrt(d2);
+          const f = 1 - d / pr;
+          ax += (dx / d) * f * f * 7.0;
+          ay += (dy / d) * f * f * 7.0;
+        }
+      }
+
+      // same disturbance from the invisible auto-sweep
+      if (auto.active) {
+        const dx = p.x - auto.x, dy = p.y - auto.y;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < pra2 && d2 > 0.01) {
+          const d = Math.sqrt(d2);
+          const f = 1 - d / pra;
+          ax += (dx / d) * f * f * 7.5;
+          ay += (dy / d) * f * f * 7.5;
+        }
+      }
+
+      p.vx = (p.vx + ax) * FRICTION;
+      p.vy = (p.vy + ay) * FRICTION;
+      p.x += p.vx; p.y += p.vy;
+
+      const speed = Math.min(1, (Math.abs(p.vx) + Math.abs(p.vy)) * 0.14);
+      const light = 60 + speed * 30;
+      const alpha = 0.7 + speed * 0.3;
+      ctx.fillStyle = `hsla(${p.hue + Math.sin(time*0.6)*6}, 100%, ${light}%, ${alpha})`;
+      const s = p.sz + speed * 1.4;
+      ctx.fillRect(p.x, p.y, s, s);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    requestAnimationFrame(frame);
+  }
+
+  // input
+  function move(x, y){ pointer.x = x; pointer.y = y; pointer.active = true; }
+  window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+  window.addEventListener('mouseleave', () => pointer.active = false);
+  window.addEventListener('touchstart', e => { const t=e.touches[0]; move(t.clientX,t.clientY); }, {passive:true});
+  window.addEventListener('touchmove', e => { const t=e.touches[0]; move(t.clientX,t.clientY); }, {passive:true});
+  window.addEventListener('touchend', () => pointer.active = false);
+
+  // wait for the display font, then build for correct glyph shapes
+  let started = false;
+  function start(){ if (started) return; started = true; size(); scheduleSweep(); requestAnimationFrame(frame); }
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.load('700 100px Anton').then(()=>document.fonts.ready).then(start).catch(start);
+    setTimeout(start, 1500); // fallback if fonts hang
+  } else start();
+
+  let to;
+  window.addEventListener('resize', () => { clearTimeout(to); to = setTimeout(size, 180); });
+})();
+</script>
+</body>
+</html>
